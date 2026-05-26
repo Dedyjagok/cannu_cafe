@@ -67,7 +67,7 @@ Route::middleware(['auth', 'role:owner'])
             ->parameters(['menu-items' => 'menuItem']);
 
         Route::resource('tables', TableController::class)
-            ->except(['show'])
+            ->except(['show', 'create', 'edit'])
             ->names('tables')
             ->parameters(['tables' => 'table']);
 

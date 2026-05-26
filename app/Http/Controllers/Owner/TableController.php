@@ -22,17 +22,7 @@ class TableController extends Controller
             ->orderBy('table_number')
             ->get();
 
-        return view('owner.tables.index', compact('tables'));
-    }
-
-    /**
-     * Form tambah meja baru.
-     *
-     * URL: GET /owner/tables/create
-     */
-    public function create(): View
-    {
-        return view('owner.tables.create');
+        return view('owner.table-management', compact('tables'));
     }
 
     /**
@@ -44,25 +34,15 @@ class TableController extends Controller
     {
         $validated = $request->validate([
             'table_number' => ['required', 'string', 'max:10', 'unique:tables,table_number'],
-            'is_available' => ['boolean'],
         ]);
-
+        
+        $validated['is_available'] = $request->has('is_available');
         $validated['qr_token'] = CafeTable::generateQrToken();
 
         CafeTable::create($validated);
 
         return redirect()->route('owner.tables.index')
             ->with('success', "Meja {$validated['table_number']} berhasil ditambahkan.");
-    }
-
-    /**
-     * Form edit meja.
-     *
-     * URL: GET /owner/tables/{table}/edit
-     */
-    public function edit(CafeTable $table): View
-    {
-        return view('owner.tables.edit', compact('table'));
     }
 
     /**
@@ -74,8 +54,9 @@ class TableController extends Controller
     {
         $validated = $request->validate([
             'table_number' => ['required', 'string', 'max:10', "unique:tables,table_number,{$table->id}"],
-            'is_available' => ['boolean'],
         ]);
+        
+        $validated['is_available'] = $request->has('is_available');
 
         $table->update($validated);
 
@@ -132,7 +113,7 @@ class TableController extends Controller
     {
         $table->update(['qr_token' => CafeTable::generateQrToken()]);
 
-        return redirect()->route('owner.tables.qr', $table)
+        return redirect()->route('owner.tables.index')
             ->with('success', "QR Code meja {$table->table_number} berhasil di-regenerate.");
     }
 }
