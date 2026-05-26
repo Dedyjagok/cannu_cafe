@@ -11,30 +11,29 @@ use Illuminate\View\View;
 class CategoryController extends Controller
 {
     /**
-     * Tampilkan daftar semua kategori.
-     *
+     * Tampilkan daftar kategori + data untuk modal (tambah/edit).
      * URL: GET /owner/categories
      */
-    public function index(): View
+    public function index(Request $request): View
     {
-        $categories = Category::ordered()->withCount('menuItems')->get();
+        $search     = $request->input('search', '');
+        $categories = Category::ordered()
+            ->withCount('menuItems')
+            ->when($search, fn ($q) => $q->where('name', 'like', "%{$search}%"))
+            ->paginate(10)
+            ->withQueryString();
 
-        return view('owner.categories.index', compact('categories'));
+        $nextSortOrder = Category::max('sort_order') + 1;
+
+        return view('owner.category-management', compact('categories', 'search', 'nextSortOrder'));
     }
 
-    /**
-     * Form tambah kategori baru.
-     *
-     * URL: GET /owner/categories/create
-     */
-    public function create(): View
-    {
-        return view('owner.categories.create');
-    }
+    // create() & edit() tidak dipakai — semua lewat modal di index
+    public function create(): View   { return $this->index(request()); }
+    public function edit(Category $category): View { return $this->index(request()); }
 
     /**
      * Simpan kategori baru.
-     *
      * URL: POST /owner/categories
      */
     public function store(Request $request): RedirectResponse
@@ -43,8 +42,10 @@ class CategoryController extends Controller
             'name'       => ['required', 'string', 'max:100', 'unique:categories,name'],
             'icon'       => ['nullable', 'string', 'max:50'],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:255'],
-            'is_active'  => ['boolean'],
+            'is_active'  => ['nullable', 'boolean'],
         ]);
+
+        $validated['is_active'] = $request->boolean('is_active');
 
         Category::create($validated);
 
@@ -53,18 +54,7 @@ class CategoryController extends Controller
     }
 
     /**
-     * Form edit kategori.
-     *
-     * URL: GET /owner/categories/{category}/edit
-     */
-    public function edit(Category $category): View
-    {
-        return view('owner.categories.edit', compact('category'));
-    }
-
-    /**
-     * Update data kategori.
-     *
+     * Update kategori.
      * URL: PUT /owner/categories/{category}
      */
     public function update(Request $request, Category $category): RedirectResponse
@@ -73,30 +63,32 @@ class CategoryController extends Controller
             'name'       => ['required', 'string', 'max:100', "unique:categories,name,{$category->id}"],
             'icon'       => ['nullable', 'string', 'max:50'],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:255'],
-            'is_active'  => ['boolean'],
+            'is_active'  => ['nullable', 'boolean'],
         ]);
+
+        $validated['is_active'] = $request->boolean('is_active');
 
         $category->update($validated);
 
         return redirect()->route('owner.categories.index')
-            ->with('success', 'Kategori berhasil diperbarui.');
+            ->with('success', "Kategori \"{$category->name}\" berhasil diperbarui.");
     }
 
     /**
-     * Hapus kategori.
-     * Tidak bisa dihapus jika masih ada menu item (restrictOnDelete di migration).
-     *
+     * Hapus kategori (guard: tidak bisa hapus jika masih punya menu).
      * URL: DELETE /owner/categories/{category}
      */
     public function destroy(Category $category): RedirectResponse
     {
         if ($category->menuItems()->exists()) {
-            return back()->with('error', 'Kategori tidak dapat dihapus karena masih memiliki menu item.');
+            return back()->with('error',
+                "Kategori \"{$category->name}\" tidak dapat dihapus karena masih memiliki menu item.");
         }
 
+        $name = $category->name;
         $category->delete();
 
         return redirect()->route('owner.categories.index')
-            ->with('success', 'Kategori berhasil dihapus.');
+            ->with('success', "Kategori \"{$name}\" berhasil dihapus.");
     }
 }

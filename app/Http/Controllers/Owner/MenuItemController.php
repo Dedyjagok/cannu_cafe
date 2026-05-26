@@ -17,26 +17,18 @@ class MenuItemController extends Controller
      *
      * URL: GET /owner/menu-items
      */
-    public function index(): View
+    public function index(Request $request): View
     {
-        $menuItems = MenuItem::with('category')
-            ->orderBy('category_id')
-            ->orderBy('name')
-            ->paginate(20);
+        $query = MenuItem::with('category')->orderBy('category_id')->orderBy('name');
 
-        return view('owner.menu-items.index', compact('menuItems'));
-    }
+        if ($request->filled('search')) {
+            $query->where('name', 'like', '%' . $request->search . '%');
+        }
 
-    /**
-     * Form tambah menu item baru.
-     *
-     * URL: GET /owner/menu-items/create
-     */
-    public function create(): View
-    {
+        $menuItems = $query->paginate(20);
         $categories = Category::active()->ordered()->get();
 
-        return view('owner.menu-items.create', compact('categories'));
+        return view('owner.menu-management', compact('menuItems', 'categories'));
     }
 
     /**
@@ -52,8 +44,9 @@ class MenuItemController extends Controller
             'description'  => ['nullable', 'string'],
             'price'        => ['required', 'numeric', 'min:0'],
             'image'        => ['nullable', 'image', 'mimes:jpeg,png,webp', 'max:2048'],
-            'is_available' => ['boolean'],
         ]);
+
+        $validated['is_available'] = $request->has('is_available');
 
         // Upload gambar ke storage/app/public/menu-images
         if ($request->hasFile('image')) {
@@ -64,18 +57,6 @@ class MenuItemController extends Controller
 
         return redirect()->route('owner.menu-items.index')
             ->with('success', 'Menu item berhasil ditambahkan.');
-    }
-
-    /**
-     * Form edit menu item.
-     *
-     * URL: GET /owner/menu-items/{menuItem}/edit
-     */
-    public function edit(MenuItem $menuItem): View
-    {
-        $categories = Category::active()->ordered()->get();
-
-        return view('owner.menu-items.edit', compact('menuItem', 'categories'));
     }
 
     /**
@@ -91,8 +72,9 @@ class MenuItemController extends Controller
             'description'  => ['nullable', 'string'],
             'price'        => ['required', 'numeric', 'min:0'],
             'image'        => ['nullable', 'image', 'mimes:jpeg,png,webp', 'max:2048'],
-            'is_available' => ['boolean'],
         ]);
+
+        $validated['is_available'] = $request->has('is_available');
 
         // Ganti gambar jika ada upload baru, hapus gambar lama
         if ($request->hasFile('image')) {

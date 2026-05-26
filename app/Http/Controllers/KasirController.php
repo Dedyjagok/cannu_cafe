@@ -16,17 +16,15 @@ class KasirController extends Controller
      */
     public function index(): View
     {
-        $pendingOrders = Order::pending()
-            ->with(['table', 'orderItems'])
-            ->latest()
-            ->get();
+        $pendingCount   = Order::pending()->count();
+        $confirmedCount = Order::byStatus('confirmed')->count();
+        $completedToday = Order::today()->byStatus('completed')->count();
 
-        $confirmedOrders = Order::byStatus('confirmed')
-            ->with(['table', 'orderItems'])
-            ->latest()
-            ->get();
-
-        return view('kasir.dashboard', compact('pendingOrders', 'confirmedOrders'));
+        return view('kasir.dashboard', compact(
+            'pendingCount',
+            'confirmedCount',
+            'completedToday',
+        ));
     }
 
     /**

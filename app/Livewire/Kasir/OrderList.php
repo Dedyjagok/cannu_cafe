@@ -45,6 +45,7 @@ class OrderList extends Component
         ]);
 
         $this->dispatch('order-confirmed', orderCode: $order->order_code);
+        $this->dispatch('refresh-stats');
         session()->flash('success', "Pesanan #{$order->order_code} dikonfirmasi.");
     }
 
@@ -57,6 +58,7 @@ class OrderList extends Component
 
         $order->update(['status' => 'completed']);
 
+        $this->dispatch('refresh-stats');
         session()->flash('success', "Pesanan #{$order->order_code} selesai.");
     }
 
@@ -71,6 +73,7 @@ class OrderList extends Component
 
         $order->update(['status' => 'cancelled']);
 
+        $this->dispatch('refresh-stats');
         session()->flash('success', "Pesanan #{$order->order_code} dibatalkan.");
     }
 

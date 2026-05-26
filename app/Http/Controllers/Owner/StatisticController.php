@@ -22,22 +22,18 @@ class StatisticController extends Controller
         $from = $request->get('from', now()->subDays(29)->toDateString());
         $to   = $request->get('to', now()->toDateString());
 
-        // ── Ringkasan hari ini ───────────────────────────────────────────────
-        $todayStats = [
-            'total_orders'    => Order::today()->whereIn('status', ['confirmed', 'completed'])->count(),
-            'total_revenue'   => Order::today()->where('status', 'completed')->sum('total_amount'),
-            'pending_orders'  => Order::today()->pending()->count(),
-        ];
-
-        // ── Statistik periode ────────────────────────────────────────────────
-        $periodStats = [
-            'total_orders'  => Order::betweenDates($from, $to)
-                ->whereIn('status', ['confirmed', 'completed'])->count(),
+        // ── Statistik periode (KPI Cards) ────────────────────────────────────
+        $kpiStats = [
             'total_revenue' => Order::betweenDates($from, $to)
                 ->where('status', 'completed')->sum('total_amount'),
+            'total_orders'  => Order::betweenDates($from, $to)->count(),
+            'completed'     => Order::betweenDates($from, $to)
+                ->where('status', 'completed')->count(),
+            'cancelled'     => Order::betweenDates($from, $to)
+                ->where('status', 'cancelled')->count(),
         ];
 
-        // ── Penjualan per hari (untuk chart) ────────────────────────────────
+        // ── Penjualan per hari (untuk chart bar) ────────────────────────────
         $dailySales = Order::betweenDates($from, $to)
             ->where('status', 'completed')
             ->selectRaw('DATE(created_at) as date, SUM(total_amount) as revenue, COUNT(*) as order_count')
@@ -57,24 +53,18 @@ class StatisticController extends Controller
             ->limit(5)
             ->get();
 
-        // ── Distribusi penjualan per kategori ───────────────────────────────
-        $categorySales = OrderItem::join('menu_items', 'order_items.menu_item_id', '=', 'menu_items.id')
-            ->join('categories', 'menu_items.category_id', '=', 'categories.id')
-            ->whereBetween('order_items.created_at', [
-                \Carbon\Carbon::parse($from)->startOfDay(),
-                \Carbon\Carbon::parse($to)->endOfDay(),
-            ])
-            ->selectRaw('categories.name as category_name, SUM(order_items.subtotal) as total_revenue')
-            ->groupBy('categories.name')
-            ->orderByDesc('total_revenue')
+        // ── Riwayat Transaksi Terbaru (tabel) ────────────────────────────────
+        $recentTransactions = Order::with('table')
+            ->betweenDates($from, $to)
+            ->latest()
+            ->limit(10)
             ->get();
 
-        return view('owner.statistics.index', compact(
-            'todayStats',
-            'periodStats',
+        return view('owner.statistics', compact(
+            'kpiStats',
             'dailySales',
             'topMenus',
-            'categorySales',
+            'recentTransactions',
             'from',
             'to'
         ));
