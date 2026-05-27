@@ -6,6 +6,7 @@ use App\Models\Order;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use Carbon\Carbon;
 
 class KasirController extends Controller
 {
@@ -16,14 +17,60 @@ class KasirController extends Controller
      */
     public function index(): View
     {
-        $pendingCount   = Order::pending()->count();
-        $confirmedCount = Order::byStatus('confirmed')->count();
-        $completedToday = Order::today()->byStatus('completed')->count();
+        // Stat counts are handled reactively by the KasirDashboard Livewire component.
+        return view('kasir.dashboard');
+    }
 
-        return view('kasir.dashboard', compact(
-            'pendingCount',
-            'confirmedCount',
-            'completedToday',
+    /**
+     * Riwayat semua pesanan dengan filter tanggal, status, dan search.
+     *
+     * URL: GET /kasir/history
+     */
+    public function history(Request $request): View
+    {
+        // ── Filter params ──────────────────────────────────────────
+        $from         = $request->input('from', today()->toDateString());
+        $to           = $request->input('to',   today()->toDateString());
+        $statusFilter = $request->input('status', 'all');
+        $search       = $request->input('search', '');
+
+        // ── Query ──────────────────────────────────────────────────
+        $query = Order::with(['table', 'orderItems', 'confirmedBy'])
+            ->whereBetween('created_at', [
+                Carbon::parse($from)->startOfDay(),
+                Carbon::parse($to)->endOfDay(),
+            ])
+            ->latest();
+
+        if ($statusFilter !== 'all') {
+            $query->where('status', $statusFilter);
+        }
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('order_code', 'like', "%{$search}%")
+                  ->orWhereHas('table', fn ($tq) =>
+                        $tq->where('table_number', 'like', "%{$search}%")
+                  );
+            });
+        }
+
+        $orders = $query->paginate(15);
+
+        // ── Today summary stats (always today, regardless of filter) ──
+        $todayCompleted = Order::today()->byStatus('completed')->count();
+        $todayRevenue   = Order::today()->byStatus('completed')->sum('total_amount');
+        $todayCancelled = Order::today()->byStatus('cancelled')->count();
+
+        return view('kasir.order-history-page', compact(
+            'orders',
+            'from',
+            'to',
+            'statusFilter',
+            'search',
+            'todayCompleted',
+            'todayRevenue',
+            'todayCancelled',
         ));
     }
 

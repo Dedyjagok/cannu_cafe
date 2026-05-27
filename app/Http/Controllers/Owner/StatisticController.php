@@ -26,9 +26,14 @@ class StatisticController extends Controller
         $kpiStats = [
             'total_revenue' => Order::betweenDates($from, $to)
                 ->where('status', 'completed')->sum('total_amount'),
-            'total_orders'  => Order::betweenDates($from, $to)->count(),
+
+            // Only count completed transactions — cancelled orders are not sales
+            'total_orders'  => Order::betweenDates($from, $to)
+                ->where('status', 'completed')->count(),
+
             'completed'     => Order::betweenDates($from, $to)
                 ->where('status', 'completed')->count(),
+
             'cancelled'     => Order::betweenDates($from, $to)
                 ->where('status', 'cancelled')->count(),
         ];
@@ -41,12 +46,12 @@ class StatisticController extends Controller
             ->orderBy('date')
             ->get();
 
-        // ── Top 5 menu terlaris berdasarkan quantity ─────────────────────────
+        // Only count items from COMPLETED orders — cancelled orders must not skew sales stats
         $topMenus = OrderItem::with('menuItem')
-            ->whereBetween('created_at', [
-                \Carbon\Carbon::parse($from)->startOfDay(),
-                \Carbon\Carbon::parse($to)->endOfDay(),
-            ])
+            ->whereHas('order', fn ($q) => $q
+                ->where('status', 'completed')
+                ->betweenDates($from, $to)
+            )
             ->selectRaw('menu_item_id, menu_name, SUM(quantity) as total_qty, SUM(subtotal) as total_revenue')
             ->groupBy('menu_item_id', 'menu_name')
             ->orderByDesc('total_qty')

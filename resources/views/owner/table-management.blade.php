@@ -17,7 +17,7 @@
     {{-- ═══════════════════════════════════════════
          MAIN CONTENT
     ═══════════════════════════════════════════ --}}
-    <div class="ml-48 flex-1 flex flex-col min-h-screen">
+    <div class="ml-60 flex-1 flex flex-col min-h-screen">
         
         {{-- Top Bar --}}
         <header class="sticky top-0 z-10 flex items-center justify-between border-b border-cafe-200 bg-white/90 px-8 py-4 shadow-sm backdrop-blur">

@@ -39,6 +39,9 @@ Route::middleware(['auth', 'role:kasir,owner'])
         Route::get('/dashboard', [KasirController::class, 'index'])
             ->name('dashboard');
 
+        Route::get('/history', [KasirController::class, 'history'])
+            ->name('history');
+
         Route::post('/order/{id}/confirm', [KasirController::class, 'confirm'])
             ->name('order.confirm');
 
