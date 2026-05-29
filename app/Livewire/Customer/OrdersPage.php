@@ -168,13 +168,22 @@ class OrdersPage extends Component
 
     public function render()
     {
-        // Re-query fresh on every render — do NOT rely on stored model properties
         $cafeTable  = CafeTable::findOrFail($this->tableId);
         $categories = Category::with(['menuItems' => fn ($q) => $q->where('is_available', true)->orderBy('name')])
             ->whereHas('menuItems', fn ($q) => $q->where('is_available', true))
             ->orderBy('name')
             ->get();
 
-        return view('livewire.customer.orders-page', compact('cafeTable', 'categories'));
+        // Pass computed values explicitly — do NOT use $this-> in Blade views
+        // $this-> access inside Blade templates is unreliable in Livewire 3 production
+        $totalItems = collect($this->cart)->sum(fn ($item) => $item['quantity']);
+        $totalPrice = collect($this->cart)->sum(fn ($item) => $item['quantity'] * $item['menu']['price']);
+
+        return view('livewire.customer.orders-page', compact(
+            'cafeTable',
+            'categories',
+            'totalItems',
+            'totalPrice',
+        ));
     }
 }

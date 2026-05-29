@@ -92,7 +92,7 @@
     </div>
 
     {{-- Floating Cart Bottom Bar --}}
-    @if($this->total_items > 0 && !$isCartOpen)
+    @if($totalItems > 0 && !$isCartOpen)
         <div class="fixed bottom-6 left-0 right-0 z-40 px-5 flex justify-center pointer-events-none">
             <div class="w-full max-w-md bg-cafe-800 rounded-2xl shadow-xl shadow-cafe-900/20 p-4 flex items-center justify-between pointer-events-auto">
                 <div class="flex items-center gap-4">
@@ -101,12 +101,12 @@
                             <path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                         </svg>
                         <span class="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-white border-2 border-cafe-800">
-                            {{ $this->total_items }}
+                            {{ $totalItems }}
                         </span>
                     </div>
                     <div>
                         <p class="text-[10px] font-medium text-cafe-300 uppercase tracking-wider">Total Harga</p>
-                        <p class="text-base font-bold text-white">Rp {{ number_format($this->total_price, 0, ',', '.') }}</p>
+                        <p class="text-base font-bold text-white">Rp {{ number_format($totalPrice, 0, ',', '.') }}</p>
                     </div>
                 </div>
                 <button wire:click="toggleCart" class="bg-white text-cafe-800 px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-cafe-50 transition active:scale-95 shadow-sm">
@@ -213,7 +213,7 @@
                     <div class="px-6 py-5 bg-cafe-50 border-t border-cafe-200">
                         <div class="flex items-center justify-between mb-4">
                             <span class="text-sm font-semibold text-cafe-500">Total Pembayaran</span>
-                            <span class="text-xl font-black text-cafe-800">Rp {{ number_format($this->total_price, 0, ',', '.') }}</span>
+                            <span class="text-xl font-black text-cafe-800">Rp {{ number_format($totalPrice, 0, ',', '.') }}</span>
                         </div>
                         <button wire:click="checkout" wire:loading.attr="disabled" class="w-full py-3.5 rounded-xl bg-cafe-800 text-white text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-cafe-900/20 hover:bg-cafe-700 transition active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed">
                             <span wire:loading.remove wire:target="checkout">Pesan Sekarang</span>
