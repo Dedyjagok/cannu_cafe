@@ -11,7 +11,7 @@
 </head>
 <body class="bg-cafe-50 font-sans antialiased text-cafe-800 pb-24">
     
-    <livewire:customer.orders-page :cafe-table="$cafeTable" :categories="$categories" />
+    <livewire:customer.orders-page :cafe-table="$cafeTable" />
 
     @livewireScripts
 </body>

@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Category;
+
 use App\Models\CafeTable;
 use App\Models\MenuItem;
 use App\Models\Order;
@@ -21,18 +21,13 @@ class MenuController extends Controller
      */
     public function show(string $qrToken): View
     {
-        // Validasi token meja
         $cafeTable = CafeTable::where('qr_token', $qrToken)
             ->where('is_available', true)
             ->firstOrFail();
 
-        // Ambil semua kategori aktif beserta menu yang tersedia
-        $categories = Category::active()
-            ->ordered()
-            ->with(['availableMenuItems'])
-            ->get();
-
-        return view('menu.show', compact('cafeTable', 'categories'));
+        // Note: categories are fetched fresh inside the OrdersPage Livewire component
+        // to avoid dehydration/serialization issues in production.
+        return view('menu.show', compact('cafeTable'));
     }
 
     /**

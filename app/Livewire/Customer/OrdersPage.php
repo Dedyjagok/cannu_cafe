@@ -3,6 +3,7 @@
 namespace App\Livewire\Customer;
 
 use App\Models\CafeTable;
+use App\Models\Category;
 use App\Models\MenuItem;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -11,162 +12,169 @@ use Livewire\Component;
 
 class OrdersPage extends Component
 {
-    public $cafeTable;
-    public $categories;
-    
-    // Keranjang belanja: array of items
-    // format: [menu_id => ['quantity' => 1, 'notes' => '', 'menu' => [id, name, price, image]]]
-    public $cart = [];
-    
-    // State UI
-    public $isCartOpen = false;
-    public $activeCategoryId = null;
+    // ── Store only primitive IDs, NOT Eloquent models ─────────────────
+    // Livewire serializes public properties between requests.
+    // Eloquent models / collections with relationships do NOT survive
+    // dehydration correctly in production — store IDs and re-query in render().
 
-    public function mount($cafeTable, $categories)
+    public int   $tableId;
+    public ?int  $activeCategoryId = null;
+
+    // Cart: [menu_id => ['quantity' => 1, 'notes' => '', 'menu' => [...]]]
+    public array $cart = [];
+
+    // UI State
+    public bool $isCartOpen = false;
+
+    // ── Lifecycle ──────────────────────────────────────────────────────
+
+    public function mount(CafeTable $cafeTable): void
     {
-        $this->cafeTable = $cafeTable;
-        $this->categories = $categories;
-        
-        if ($this->categories->isNotEmpty()) {
-            $this->activeCategoryId = $this->categories->first()->id;
+        $this->tableId = $cafeTable->id;
+
+        // Set first category as default active
+        $firstCategory = Category::whereHas('menuItems', fn ($q) => $q->where('is_available', true))
+            ->orderBy('name')
+            ->first();
+
+        if ($firstCategory) {
+            $this->activeCategoryId = $firstCategory->id;
         }
     }
 
-    public function setActiveCategory($categoryId)
+    // ── Actions ───────────────────────────────────────────────────────
+
+    public function setActiveCategory(int $categoryId): void
     {
         $this->activeCategoryId = $categoryId;
     }
 
-    public function toggleCart()
+    public function toggleCart(): void
     {
         $this->isCartOpen = !$this->isCartOpen;
     }
 
-    public function addToCart($menuId)
+    public function addToCart(int $menuId): void
     {
         if (isset($this->cart[$menuId])) {
             $this->cart[$menuId]['quantity']++;
         } else {
-            // Fetch menu item data to store in cart state
-            $menu = MenuItem::find($menuId);
-            if ($menu && $menu->is_available) {
+            $menu = MenuItem::where('id', $menuId)->where('is_available', true)->first();
+            if ($menu) {
                 $this->cart[$menuId] = [
                     'quantity' => 1,
-                    'notes' => '',
-                    'menu' => [
-                        'id' => $menu->id,
-                        'name' => $menu->name,
-                        'price' => $menu->price,
+                    'notes'    => '',
+                    'menu'     => [
+                        'id'    => $menu->id,
+                        'name'  => $menu->name,
+                        'price' => (float) $menu->price,
                         'image' => $menu->image,
-                    ]
+                    ],
                 ];
             }
         }
     }
 
-    public function incrementQuantity($menuId)
+    public function incrementQuantity(int $menuId): void
     {
-        if (isset($this->cart[$menuId])) {
-            if ($this->cart[$menuId]['quantity'] < 99) {
-                $this->cart[$menuId]['quantity']++;
+        if (isset($this->cart[$menuId]) && $this->cart[$menuId]['quantity'] < 99) {
+            $this->cart[$menuId]['quantity']++;
+        }
+    }
+
+    public function decrementQuantity(int $menuId): void
+    {
+        if (!isset($this->cart[$menuId])) return;
+
+        if ($this->cart[$menuId]['quantity'] > 1) {
+            $this->cart[$menuId]['quantity']--;
+        } else {
+            unset($this->cart[$menuId]);
+            if (empty($this->cart)) {
+                $this->isCartOpen = false;
             }
         }
     }
 
-    public function decrementQuantity($menuId)
-    {
-        if (isset($this->cart[$menuId])) {
-            if ($this->cart[$menuId]['quantity'] > 1) {
-                $this->cart[$menuId]['quantity']--;
-            } else {
-                unset($this->cart[$menuId]);
-                if (empty($this->cart)) {
-                    $this->isCartOpen = false; // Tutup cart jika kosong
-                }
-            }
-        }
-    }
-
-    public function updateNotes($menuId, $notes)
+    public function updateNotes(int $menuId, string $notes): void
     {
         if (isset($this->cart[$menuId])) {
             $this->cart[$menuId]['notes'] = $notes;
         }
     }
 
-    public function getTotalPriceProperty()
+    // ── Computed Properties ───────────────────────────────────────────
+
+    public function getTotalPriceProperty(): float
     {
-        $total = 0;
-        foreach ($this->cart as $item) {
-            $total += $item['quantity'] * $item['menu']['price'];
-        }
-        return $total;
+        return collect($this->cart)->sum(fn ($item) => $item['quantity'] * $item['menu']['price']);
     }
 
-    public function getTotalItemsProperty()
+    public function getTotalItemsProperty(): int
     {
-        $total = 0;
-        foreach ($this->cart as $item) {
-            $total += $item['quantity'];
-        }
-        return $total;
+        return collect($this->cart)->sum(fn ($item) => $item['quantity']);
     }
 
-    public function checkout()
+    // ── Checkout ──────────────────────────────────────────────────────
+
+    public function checkout(): mixed
     {
         if (empty($this->cart)) {
             session()->flash('error', 'Keranjang Anda kosong.');
-            return;
+            return null;
         }
 
         try {
             DB::beginTransaction();
 
             $order = Order::create([
-                'table_id'     => $this->cafeTable->id,
+                'table_id'     => $this->tableId,
                 'order_code'   => Order::generateOrderCode(),
                 'status'       => 'pending',
-                'total_amount' => $this->total_price, // Gunakan computed property
+                'total_amount' => $this->total_price,
             ]);
 
             foreach ($this->cart as $menuId => $item) {
-                // Pastikan item masih tersedia dan harga valid
                 $menuItem = MenuItem::where('id', $menuId)
                     ->where('is_available', true)
                     ->firstOrFail();
 
-                $subtotal = OrderItem::calculateSubtotal($item['quantity'], (float) $menuItem->price);
-
                 $order->orderItems()->create([
                     'menu_item_id' => $menuItem->id,
-                    'menu_name'    => $menuItem->name,       // snapshot
-                    'menu_price'   => $menuItem->price,      // snapshot
+                    'menu_name'    => $menuItem->name,
+                    'menu_price'   => $menuItem->price,
                     'quantity'     => $item['quantity'],
-                    'subtotal'     => $subtotal,
+                    'subtotal'     => OrderItem::calculateSubtotal($item['quantity'], (float) $menuItem->price),
                     'notes'        => $item['notes'] ?? null,
                 ]);
             }
 
-            // Optional: update total amount in header based on actual calculated sum to be safe
-            // Tapi kita sudah set di awal. Kita abaikan update lagi kecuali ada logika tambahan.
-
             DB::commit();
 
-            // Clear cart
-            $this->cart = [];
-            
-            // Redirect to status page
+            $this->cart       = [];
+            $this->isCartOpen = false;
+
             return redirect()->route('order.status', ['orderCode' => $order->order_code])
                 ->with('success', 'Pesanan berhasil dikirim!');
 
         } catch (\Exception $e) {
             DB::rollBack();
             session()->flash('error', 'Terjadi kesalahan saat memproses pesanan. Silakan coba lagi.');
+            return null;
         }
     }
 
+    // ── Render ────────────────────────────────────────────────────────
+
     public function render()
     {
-        return view('livewire.customer.orders-page');
+        // Re-query fresh on every render — do NOT rely on stored model properties
+        $cafeTable  = CafeTable::findOrFail($this->tableId);
+        $categories = Category::with(['menuItems' => fn ($q) => $q->where('is_available', true)->orderBy('name')])
+            ->whereHas('menuItems', fn ($q) => $q->where('is_available', true))
+            ->orderBy('name')
+            ->get();
+
+        return view('livewire.customer.orders-page', compact('cafeTable', 'categories'));
     }
 }
