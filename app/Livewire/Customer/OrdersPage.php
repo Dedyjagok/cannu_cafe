@@ -124,6 +124,11 @@ class OrdersPage extends Component
             return null;
         }
 
+        // Compute total manually — $this->total_price is unreliable in Livewire 3
+        // (getXxxProperty() magic no longer works inside PHP methods without #[Computed])
+        $calculatedTotal = collect($this->cart)
+            ->sum(fn ($item) => $item['quantity'] * $item['menu']['price']);
+
         try {
             DB::beginTransaction();
 
@@ -131,7 +136,7 @@ class OrdersPage extends Component
                 'table_id'     => $this->tableId,
                 'order_code'   => Order::generateOrderCode(),
                 'status'       => 'pending',
-                'total_amount' => $this->total_price,
+                'total_amount' => $calculatedTotal,
             ]);
 
             foreach ($this->cart as $menuId => $item) {

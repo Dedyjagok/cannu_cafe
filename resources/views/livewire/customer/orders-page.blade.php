@@ -16,7 +16,8 @@
         {{-- Categories Horizontal Scroll --}}
         <div class="px-5 py-3 flex gap-3 overflow-x-auto no-scrollbar border-t border-cafe-50">
             @foreach($categories as $category)
-                <button wire:click="setActiveCategory({{ $category->id }})"
+                <button wire:key="category-{{ $category->id }}"
+                        wire:click="setActiveCategory({{ $category->id }})"
                         class="flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-all border
                         @if($activeCategoryId === $category->id) 
                             bg-cafe-800 text-white border-cafe-800 shadow-sm
@@ -49,7 +50,7 @@
 
             <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
                 @forelse($activeCategory->availableMenuItems as $menu)
-                    <div class="flex flex-col overflow-hidden rounded-2xl border border-cafe-100 bg-white shadow-sm transition hover:shadow-md">
+                    <div wire:key="menu-{{ $menu->id }}" class="flex flex-col overflow-hidden rounded-2xl border border-cafe-100 bg-white shadow-sm transition hover:shadow-md">
                         {{-- Image --}}
                         <div class="relative aspect-square bg-cafe-50">
                             @if($menu->image)
@@ -93,7 +94,7 @@
 
     {{-- Floating Cart Bottom Bar --}}
     @if($totalItems > 0 && !$isCartOpen)
-        <div class="fixed bottom-6 left-0 right-0 z-40 px-5 flex justify-center pointer-events-none">
+        <div wire:key="floating-cart-bar" class="fixed bottom-6 left-0 right-0 z-40 px-5 flex justify-center pointer-events-none">
             <div class="w-full max-w-md bg-cafe-800 rounded-2xl shadow-xl shadow-cafe-900/20 p-4 flex items-center justify-between pointer-events-auto">
                 <div class="flex items-center gap-4">
                     <div class="relative">
@@ -118,7 +119,7 @@
 
     {{-- Cart Modal Overlay --}}
     @if($isCartOpen)
-        <div class="fixed inset-0 z-50 flex flex-col bg-cafe-50/50 backdrop-blur-sm sm:items-center sm:justify-center">
+        <div wire:key="cart-modal-overlay" class="fixed inset-0 z-50 flex flex-col bg-cafe-50/50 backdrop-blur-sm sm:items-center sm:justify-center">
             
             {{-- Dim Backdrop (click to close) --}}
             <div class="absolute inset-0 bg-cafe-900/40" wire:click="toggleCart"></div>
@@ -139,7 +140,7 @@
                 {{-- Modal Body (Cart Items) --}}
                 <div class="flex-1 overflow-y-auto px-6 py-4 space-y-5">
                     @forelse($cart as $menuId => $item)
-                        <div class="flex flex-col gap-3 pb-5 border-b border-cafe-100 last:border-0 last:pb-0">
+                        <div wire:key="cart-item-{{ $menuId }}" class="flex flex-col gap-3 pb-5 border-b border-cafe-100 last:border-0 last:pb-0">
                             
                             {{-- Item Primary Info --}}
                             <div class="flex gap-4">
