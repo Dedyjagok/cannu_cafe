@@ -14,39 +14,59 @@
 
 @push('scripts')
 <script>
-    /* ── Browser Autoplay Unlock ───────────────────────────────────────
-       Browsers block audio until user has interacted with the page.
-       Silently unlock on first click/keydown so sound plays later.
+    /* ── Read notification settings from localStorage ─────────────────
+       Set in /kasir/notification-settings page via Alpine.js.
     ─────────────────────────────────────────────────────────────────── */
-    let _audioUnlocked = false;
+    const NOTIF_DEFAULT_SOUND = '{{ asset("storage/sound/notification_order_cashier.mp3") }}';
+    const NOTIF_KEY           = 'cannu_notif_settings';
 
+    function _getNotifSettings() {
+        try {
+            const saved = localStorage.getItem(NOTIF_KEY);
+            if (saved) return { ...{ enabled: true, volume: 80, selectedSound: NOTIF_DEFAULT_SOUND, bannerDuration: 7, repeatCount: 1 }, ...JSON.parse(saved) };
+        } catch (e) {}
+        return { enabled: true, volume: 80, selectedSound: NOTIF_DEFAULT_SOUND, bannerDuration: 7, repeatCount: 1 };
+    }
+
+    /* ── Browser Autoplay Unlock ─────────────────────────────────────── */
+    let _audioUnlocked = false;
     function _unlockAudio() {
         if (_audioUnlocked) return;
-        const sound = document.getElementById('notif-sound');
-        if (!sound) return;
-        sound.volume = 0;
-        sound.play()
-            .then(() => { sound.pause(); sound.currentTime = 0; sound.volume = 1; _audioUnlocked = true; })
-            .catch(() => {});
+        const s = _getNotifSettings();
+        const audio = new Audio(s.selectedSound);
+        audio.volume = 0;
+        audio.play().then(() => { audio.pause(); _audioUnlocked = true; }).catch(() => {});
     }
     document.addEventListener('click',   _unlockAudio, { once: true });
     document.addEventListener('keydown', _unlockAudio, { once: true });
 
-    /* ── Play notification sound ────────────────────────────────────── */
+    /* ── Play notification sound with settings ───────────────────────── */
     function _playNotifSound() {
-        const sound = document.getElementById('notif-sound');
-        if (!sound) return;
-        sound.currentTime = 0;
-        sound.play().catch(() => {});
+        const s = _getNotifSettings();
+        if (!s.enabled) return;
+
+        let played = 0;
+        function playOnce() {
+            if (played >= s.repeatCount) return;
+            const audio = new Audio(s.selectedSound);
+            audio.volume = Math.min(1, Math.max(0, s.volume / 100));
+            audio.play().then(() => {
+                played++;
+                audio.addEventListener('ended', playOnce, { once: true });
+            }).catch(() => {});
+        }
+        playOnce();
     }
 
-    /* ── Listen for Livewire event dispatched by KasirDashboard ──────── */
+    /* ── Listen for Livewire event dispatched by KasirDashboard ─────── */
     document.addEventListener('livewire:initialized', () => {
         Livewire.on('new-orders-arrived', (data) => {
             const orders = Array.isArray(data) ? data : (data.orders ?? []);
             if (!orders.length) return;
 
-            // Play sound 🔔
+            const s = _getNotifSettings();
+
+            // 🔔 Play sound
             _playNotifSound();
 
             // Show banner
@@ -62,7 +82,7 @@
             clearTimeout(window._notifTimer);
             window._notifTimer = setTimeout(() => {
                 banner.classList.replace('flex', 'hidden');
-            }, 7000);
+            }, (s.bannerDuration ?? 7) * 1000);
         });
     });
 </script>

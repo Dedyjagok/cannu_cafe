@@ -42,6 +42,9 @@ Route::middleware(['auth', 'role:kasir,owner'])
         Route::get('/history', [KasirController::class, 'history'])
             ->name('history');
 
+        Route::get('/notification-settings', fn () => view('kasir.notification-settings'))
+            ->name('notification-settings');
+
         Route::post('/order/{id}/confirm', [KasirController::class, 'confirm'])
             ->name('order.confirm');
 
