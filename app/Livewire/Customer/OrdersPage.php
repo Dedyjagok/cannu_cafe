@@ -56,12 +56,14 @@ class OrdersPage extends Component
 
     public function addToCart(int $menuId): void
     {
-        if (isset($this->cart[$menuId])) {
-            $this->cart[$menuId]['quantity']++;
+        $tempCart = $this->cart;
+
+        if (isset($tempCart[$menuId])) {
+            $tempCart[$menuId]['quantity']++;
         } else {
             $menu = MenuItem::where('id', $menuId)->where('is_available', true)->first();
             if ($menu) {
-                $this->cart[$menuId] = [
+                $tempCart[$menuId] = [
                     'quantity' => 1,
                     'notes'    => '',
                     'menu'     => [
@@ -73,34 +75,42 @@ class OrdersPage extends Component
                 ];
             }
         }
+
+        $this->cart = $tempCart;
     }
 
     public function incrementQuantity(int $menuId): void
     {
-        if (isset($this->cart[$menuId]) && $this->cart[$menuId]['quantity'] < 99) {
-            $this->cart[$menuId]['quantity']++;
+        $tempCart = $this->cart;
+        if (isset($tempCart[$menuId]) && $tempCart[$menuId]['quantity'] < 99) {
+            $tempCart[$menuId]['quantity']++;
         }
+        $this->cart = $tempCart;
     }
 
     public function decrementQuantity(int $menuId): void
     {
-        if (!isset($this->cart[$menuId])) return;
+        $tempCart = $this->cart;
+        if (!isset($tempCart[$menuId])) return;
 
-        if ($this->cart[$menuId]['quantity'] > 1) {
-            $this->cart[$menuId]['quantity']--;
+        if ($tempCart[$menuId]['quantity'] > 1) {
+            $tempCart[$menuId]['quantity']--;
         } else {
-            unset($this->cart[$menuId]);
-            if (empty($this->cart)) {
+            unset($tempCart[$menuId]);
+            if (empty($tempCart)) {
                 $this->isCartOpen = false;
             }
         }
+        $this->cart = $tempCart;
     }
 
     public function updateNotes(int $menuId, string $notes): void
     {
-        if (isset($this->cart[$menuId])) {
-            $this->cart[$menuId]['notes'] = $notes;
+        $tempCart = $this->cart;
+        if (isset($tempCart[$menuId])) {
+            $tempCart[$menuId]['notes'] = $notes;
         }
+        $this->cart = $tempCart;
     }
 
     // ── Computed Properties ───────────────────────────────────────────

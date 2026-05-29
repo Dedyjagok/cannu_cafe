@@ -93,7 +93,9 @@
     </div>
 
     {{-- Floating Cart Bottom Bar --}}
-    @if($totalItems > 0 && !$isCartOpen)
+    {{-- WADAH PERMANEN UNTUK FLOATING CART --}}
+    <div id="cart-bottom-wrapper" wire:key="cart-bottom-wrapper">
+        @if($totalItems > 0 && !$isCartOpen)
         <div wire:key="floating-cart-bar" class="fixed bottom-6 left-0 right-0 z-40 px-5 flex justify-center pointer-events-none">
             <div class="w-full max-w-md bg-cafe-800 rounded-2xl shadow-xl shadow-cafe-900/20 p-4 flex items-center justify-between pointer-events-auto">
                 <div class="flex items-center gap-4">
@@ -115,10 +117,13 @@
                 </button>
             </div>
         </div>
-    @endif
+        @endif
+    </div>
 
     {{-- Cart Modal Overlay --}}
-    @if($isCartOpen)
+    {{-- WADAH PERMANEN UNTUK MODAL --}}
+    <div id="cart-modal-wrapper" wire:key="cart-modal-wrapper">
+        @if($isCartOpen)
         <div wire:key="cart-modal-overlay" class="fixed inset-0 z-50 flex flex-col bg-cafe-50/50 backdrop-blur-sm sm:items-center sm:justify-center">
             
             {{-- Dim Backdrop (click to close) --}}
@@ -231,7 +236,8 @@
                 
             </div>
         </div>
-    @endif
+        @endif
+    </div>
     
     <style>
         /* Hide scrollbar for category tabs */
